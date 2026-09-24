@@ -1,0 +1,217 @@
+/* Figtree (SIL Open Font License 1.1) — auto-hébergée, fichier variable 300-900. */
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("fonts/figtree-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("fonts/figtree-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+  --encre: #4a1f1a;
+  --papier: #fdfbf7;
+  /* Substitut libre de Congenial Light. Pour revenir en arrière :
+     --police: Georgia, "Times New Roman", serif; --graisse: normal; */
+  --police: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --graisse: 300;
+  --trait: rgba(74, 31, 26, 0.16);
+  --accent: #b5462f;
+  /* Mise en avant d'un cartouche : un bleu ardoise, cousin saturé du fond
+     bleu clair des cartouches. Moins agressif que l'accent rouge du site. */
+  --survol: #3f6f9f;
+  --panneau-l: 62vw;
+  --panneau-h: 65vh;
+}
+@supports (height: 1dvh) {
+  :root { --panneau-h: 65dvh; }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body {
+  font-family: var(--police);
+  font-weight: var(--graisse);
+  color: var(--encre);
+  background: #fff;
+}
+[hidden] { display: none !important; }
+
+#carte { position: fixed; inset: 0; background: #fff; }
+
+/* Bandeau titre + Instagram */
+.bandeau {
+  position: fixed; left: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 1000;
+  display: flex; align-items: center; gap: 14px;
+  padding: 8px 16px;
+  background: rgba(253, 251, 247, 0.92);
+  border: 1px solid var(--trait);
+  border-radius: 999px;
+}
+.bandeau h1 { margin: 0; font-size: 1rem; font-weight: var(--graisse); }
+.insta { display: inline-flex; align-items: center; gap: 6px; color: inherit; text-decoration: none; font-size: 0.9rem; }
+.insta svg { width: 18px; height: 18px; }
+
+/* Cartouches : le nom imprimé sur la carte sert lui-même de bouton.
+   Au repos, rien : la carte reste telle qu'Eric l'a dessinée. La couleur
+   n'apparaît qu'au survol, au focus ou sur le lieu ouvert.
+   Le tracé est recalculé par Leaflet à chaque zoom, donc stroke-width est en
+   pixels écran et le liseré garde la même finesse à tous les niveaux. */
+.cartouche {
+  fill: var(--survol); fill-opacity: 0;
+  stroke: var(--survol); stroke-opacity: 0; stroke-width: 2;
+  transition: fill-opacity 0.15s ease, stroke-opacity 0.15s ease;
+}
+.cartouche.survole { fill-opacity: 0.22; stroke-opacity: 0.85; }
+.cartouche.actif { fill-opacity: 0.38; stroke-opacity: 1; }
+
+/* Cible invisible de 44 px posée au centre du cartouche. Elle porte le focus
+   clavier, que les tracés SVG ne prennent pas, et sert de zone tactile quand
+   le rectangle devient trop petit pour le doigt. */
+.cible { background: none; border: 0; }
+.cible:focus-visible { outline: 2px solid var(--encre); outline-offset: 2px; border-radius: 6px; }
+/* Leaflet force pointer-events sur .leaflet-marker-icon.leaflet-interactive :
+   il faut la même spécificité pour reprendre la main. À la souris le rectangle
+   vise au pixel et suffit ; seule la zone tactile intérieure reprend les
+   événements, et uniquement sur écran sans survol. */
+.cible.leaflet-interactive { pointer-events: none; }
+.cible .zone {
+  position: absolute; left: 22px; top: 22px;
+  width: var(--taille, 44px); height: var(--taille, 44px);
+  transform: translate(-50%, -50%);
+  border-radius: 6px;
+}
+@media (hover: none) {
+  .cible .zone { pointer-events: auto; }
+}
+
+/* Aperçu du rectangle en cours de relevé (?coords) */
+.apercu-releve {
+  fill: var(--accent); fill-opacity: 0.15;
+  stroke: var(--accent); stroke-width: 2;
+}
+
+/* Panneau de lieu : à droite sur grand écran */
+#panneau {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 1100;
+  width: var(--panneau-l);
+  display: flex; flex-direction: column;
+  background: var(--papier);
+  border-left: 1px solid var(--trait);
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+}
+.ouvert #panneau { transform: none; }
+.carte-reduite #carte { right: var(--panneau-l); }
+
+.entete { position: relative; display: flex; align-items: center; gap: 12px; padding: 16px 20px 8px; }
+.entete h2 { flex: 1; margin: 0; font-size: 1.6rem; font-weight: var(--graisse); }
+.poignee { display: none; }
+.fermer {
+  width: 44px; height: 44px;
+  border: 0; border-radius: 50%;
+  background: none; color: inherit;
+  font-size: 2rem; line-height: 1; cursor: pointer;
+}
+#panneau:focus { outline: none; }
+
+.galerie { position: relative; flex: 1 1 auto; min-height: 0; margin: 0 20px; display: flex; }
+.galerie img { width: 100%; height: 100%; object-fit: contain; user-select: none; transition: opacity 0.2s ease; }
+.vide { margin: auto; font-style: italic; color: rgba(74, 31, 26, 0.5); }
+.galerie img.cache { opacity: 0; }
+.nav {
+  position: absolute; top: 50%;
+  width: 44px; height: 44px;
+  transform: translateY(-50%);
+  border: 1px solid var(--trait); border-radius: 50%;
+  background: rgba(253, 251, 247, 0.9); color: inherit;
+  font-size: 1.8rem; line-height: 1; cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.prec { left: 8px; }
+.suiv { right: 8px; }
+
+.infos { padding: 8px 20px 20px; }
+.infos p { margin: 0; }
+.compteur { text-align: center; font-variant-numeric: tabular-nums; }
+.infos .legende { margin-top: 0.4rem; text-align: center; font-style: italic; }
+.infos .texte { margin-top: 0.8rem; line-height: 1.5; }
+
+@media (hover: hover) {
+  .insta:hover { color: var(--accent); }
+  .fermer:hover { background: var(--trait); }
+  .nav:hover { transform: translateY(-50%) scale(1.15); }
+}
+
+/* Panneau du bas sur mobile / portrait */
+@media (max-width: 767px), (orientation: portrait) and (max-width: 1024px) {
+  #panneau {
+    top: auto; left: 0; width: auto; height: var(--panneau-h);
+    border-left: 0; border-top: 1px solid var(--trait);
+    border-radius: 16px 16px 0 0;
+    transform: translateY(100%);
+  }
+  .carte-reduite #carte { right: 0; bottom: var(--panneau-h); }
+  .entete { padding: 22px 12px 6px 16px; }
+  .entete h2 { font-size: 1.25rem; }
+  .poignee {
+    display: block; position: absolute; top: 8px; left: 50%;
+    width: 40px; height: 4px; margin-left: -20px;
+    border-radius: 2px; background: var(--trait);
+  }
+  .galerie { flex: 0 0 auto; margin: 0 12px; }
+  .galerie img { height: auto; }
+  .infos { padding: 10px 16px 16px; overflow-y: auto; }
+  .bandeau { gap: 10px; padding: 6px 12px; }
+  .bandeau h1 { font-size: 0.9rem; }
+}
+
+/* Agrandir l'image */
+.galerie img { cursor: zoom-in; }
+.agrandir {
+  position: absolute; top: 8px; right: 8px;
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  border: 1px solid var(--trait); border-radius: 50%;
+  background: rgba(253, 251, 247, 0.9); color: inherit; cursor: pointer;
+}
+.agrandir svg { width: 18px; height: 18px; }
+
+/* Visionneuse plein écran, zoomable */
+#visionneuse { position: fixed; inset: 0; z-index: 1300; background: #1d1512; }
+#visionneuse-carte { position: absolute; inset: 0; background: transparent; }
+.v-fermer {
+  position: absolute; top: 12px; right: 12px; z-index: 1001;
+  width: 44px; height: 44px;
+  border: 0; border-radius: 50%;
+  background: rgba(253, 251, 247, 0.9); color: var(--encre);
+  font-size: 2rem; line-height: 1; cursor: pointer;
+}
+#visionneuse .nav { z-index: 1001; }
+.v-compteur {
+  position: absolute; left: 50%; bottom: 16px; z-index: 1001;
+  margin: 0; padding: 4px 12px;
+  transform: translateX(-50%);
+  background: rgba(253, 251, 247, 0.9); border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Aide au placement (?coords) */
+#coords {
+  position: fixed; left: 12px; top: 12px; z-index: 1200;
+  padding: 6px 10px;
+  font: 0.85rem/1.3 ui-monospace, Consolas, monospace;
+  background: var(--papier); border: 1px solid var(--trait); border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
